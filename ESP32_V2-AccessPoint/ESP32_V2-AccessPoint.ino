@@ -1,29 +1,28 @@
-#include <WiFiS3.h>
+#include <WiFi.h>
+#include <NetworkClient.h>
+#include <WiFiAP.h>
 #include <WiFiUdp.h>
 
 const char* ssid = "ArduinoNet";
 const char* password = "";
 
 const int udpPort = 4210;
-WiFiUDP udp;
 
+WiFiUDP udp;
 IPAddress receiverIP(192, 168, 4, 2);
 
-const int buttonONPin = 2;   // signal wire
-const int buttonONLED = 3;   // led wire
-
-const int buttonOFFPin = 8;   // signal wire
-const int buttonOFFLED = 9;   // led wire
-
-bool doON = false;
-bool doOFF = false;
+const int buttonONPin = 14;
+const int buttonONLED = 32;
+const int buttonOFFPin = 15;
+const int buttonOFFLED = 33;
 
 bool buttonONLastState = HIGH;
 bool buttonOFFLastState = HIGH;
 
-void setup() {
-  Serial.begin(9600);
+NetworkServer server(80);
 
+void setup() {
+  Serial.begin(115200);
   pinMode(buttonONPin, INPUT_PULLUP);
   pinMode(buttonOFFPin, INPUT_PULLUP);
   pinMode(buttonONLED, OUTPUT);
@@ -32,11 +31,19 @@ void setup() {
 
   Serial.print("Starting Access Point: ");
   Serial.println(ssid);
-  WiFi.beginAP(ssid);
+
+  if (!WiFi.softAP(ssid)) {
+    log_e("Soft AP creation failed.");
+    while (1);
+  }
+
+  IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP: ");
-  Serial.println(WiFi.localIP());
+  Serial.println(myIP);
 
   udp.begin(udpPort);
+  server.begin();
+  Serial.println("Server started");
 }
 
 void loop() {
@@ -45,7 +52,7 @@ void loop() {
 
   if (buttonONLastState == LOW && buttonONState == HIGH) {
     delay(50);
-    if (digitalRead(buttonONPin) == HIGH) {  // confirm it's still released
+    if (digitalRead(buttonONPin) == HIGH) {
       udp.beginPacket(receiverIP, udpPort);
       udp.print("1");
       udp.endPacket();
@@ -55,7 +62,7 @@ void loop() {
 
   if (buttonOFFLastState == LOW && buttonOFFState == HIGH) {
     delay(50);
-    if (digitalRead(buttonOFFPin) == HIGH) {  // confirm it's still released
+    if (digitalRead(buttonOFFPin) == HIGH) {
       udp.beginPacket(receiverIP, udpPort);
       udp.print("0");
       udp.endPacket();
